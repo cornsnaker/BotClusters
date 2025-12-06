@@ -6,7 +6,7 @@ usage() {
     exit 1
 }
 
-DNF_PACKAGES="nano"
+DNF_PACKAGES="nano qbittorrent-nox"
 PIP_PACKAGES="croniter python-dateutil apscheduler"
 
 echo "[INFO] Starting install.sh script"
@@ -46,6 +46,13 @@ if [ ! -z "$PIP_PACKAGES" ]; then
     echo "[INFO] Installing pip packages: $PIP_PACKAGES"
     echo "$PIP_PACKAGES" | xargs pip3 install
     echo "[INFO] PIP packages installed successfully"
+fi
+
+if command -v qbittorrent-nox &> /dev/null; then
+    echo "[INFO] Creating symlink for stormtorrent"
+    ln -sf $(which qbittorrent-nox) /usr/bin/stormtorrent
+else
+    echo "[ERROR] qbittorrent-nox not found, cannot create stormtorrent symlink"
 fi
 
 echo "[INFO] install.sh script completed"
