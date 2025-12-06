@@ -6,16 +6,17 @@ usage() {
     exit 1
 }
 
-DNF_PACKAGES="nano qbittorrent-nox"
+PACKAGES="nano qbittorrent-nox"
 PIP_PACKAGES="croniter python-dateutil apscheduler"
 
 echo "[INFO] Starting install.sh script"
 
+# Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --dnf-packages)
-            DNF_PACKAGES="$2"
-            echo "[INFO] Overriding DNF packages to install: $DNF_PACKAGES"
+            PACKAGES="$2"
+            echo "[INFO] Overriding system packages to install: $PACKAGES"
             shift 2
             ;;
         --pip-packages)
@@ -29,22 +30,51 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ ! -z "$DNF_PACKAGES" ]; then
+if command -v dnf &> /dev/null; then
+    echo "[INFO] Detected DNF package manager"
     echo "[INFO] Updating DNF repositories"
     dnf -y update
-    echo "[INFO] Installing DNF packages: $DNF_PACKAGES"
-    echo "$DNF_PACKAGES" | xargs dnf install -y
-    echo "[INFO] DNF packages installed successfully"
+    echo "[INFO] Installing packages: $PACKAGES"
+    echo "$PACKAGES" | xargs dnf install -y
+    echo "[INFO] Packages installed successfully"
+
+    if [ ! -z "$PIP_PACKAGES" ]; then
+        echo "[INFO] Checking for pip3"
+        if ! command -v pip3 &> /dev/null; then
+            echo "[INFO] pip3 not found, installing python3-pip"
+            dnf install -y python3-pip
+        fi
+    fi
+
+elif command -v apt-get &> /dev/null; then
+    echo "[INFO] Detected APT package manager"
+    export DEBIAN_FRONTEND=noninteractive
+    echo "[INFO] Updating APT repositories"
+    apt-get update -y
+    echo "[INFO] Installing packages: $PACKAGES"
+    echo "$PACKAGES" | xargs apt-get install -y
+    echo "[INFO] Packages installed successfully"
+
+    if [ ! -z "$PIP_PACKAGES" ]; then
+        echo "[INFO] Checking for pip3"
+        if ! command -v pip3 &> /dev/null; then
+            echo "[INFO] pip3 not found, installing python3-pip"
+            apt-get install -y python3-pip
+        fi
+    fi
+else
+    echo "[ERROR] No supported package manager found (dnf, apt-get)"
+    exit 1
 fi
 
 if [ ! -z "$PIP_PACKAGES" ]; then
-    echo "[INFO] Checking for pip3"
-    if ! command -v pip3 &> /dev/null; then
-        echo "[INFO] pip3 not found, installing python3-pip"
-        dnf install -y python3-pip
-    fi
     echo "[INFO] Installing pip packages: $PIP_PACKAGES"
-    echo "$PIP_PACKAGES" | xargs pip3 install
+    # Try to install with --break-system-packages if available (for recent Debian/Ubuntu)
+    if pip3 install --help | grep -q "break-system-packages"; then
+        echo "$PIP_PACKAGES" | xargs pip3 install --break-system-packages
+    else
+        echo "$PIP_PACKAGES" | xargs pip3 install
+    fi
     echo "[INFO] PIP packages installed successfully"
 fi
 
